@@ -18,8 +18,8 @@ class QuotesSpider(scrapy.Spider):
     if not password:
         password = input(f'Input password to system {service} for user {user}: ')
         keyring.set_password(service, user, password)
-    conn_string = f"mysql+pymysql://{user}:{password}@{db_server}/{db_name}"
-    alchemy_conn = sqlalchemy.create_engine(conn_string)
+    self.conn_string = f"mysql+pymysql://{user}:{password}@{db_server}/{db_name}"
+    self.alchemy_conn = sqlalchemy.create_engine(conn_string)
     first_day_for_import = alchemy_conn.execute("select max(`date`) from seats").fetchone()[0] + dt.timedelta(days=1)
 
     def parse(self, response):
@@ -32,10 +32,7 @@ class QuotesSpider(scrapy.Spider):
 
         yield from response.follow_all(htmls, callback=self.parse_car)
 
-    def parse_car(self, response):
-        global first_day_for_import
-        global alchemy_conn
-        
+    def parse_car(self, response):     
         url = response.url
         date = str(dt.date.today())
 
@@ -89,7 +86,7 @@ class QuotesSpider(scrapy.Spider):
                }
 
         df = pd.DataFrame(result, index=[0])
-        if first_day_for_import <= dt.date.today():
-            df.to_sql("seats", alchemy_conn, if_exists="append", index=False)
+        if self.first_day_for_import <= dt.date.today():
+            df.to_sql("seats", self.alchemy_conn, if_exists="append", index=False)
 
         yield result
